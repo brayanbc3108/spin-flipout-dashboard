@@ -1,0 +1,21 @@
+{
+  "users_sample": 50000,
+  "users_in_scope": 48145,
+  "users_eligible": 13666,
+  "oxxo_share_of_purchases": 0.11600838696607191,
+  "flip_out_rate_oot": 0.22279138306083784,
+  "flip_outs_oot": 3175,
+  "users_oot": 14251,
+  "snapshot": "2026-07-01",
+  "window": "Feb to Jul 2026",
+  "persona_window": "Aug 2025 to Jan 2026",
+  "best_version": "v7",
+  "persona_counts": {
+    "Everyday Power Users": 13697,
+    "Occasional Physical": 10919,
+    "Cross-Border Online": 8490,
+    "Bank-Funded Diversified": 5888,
+    "Virtual Card Shoppers": 5558,
+    "OXXO Loyalists": 3593
+  }
+}

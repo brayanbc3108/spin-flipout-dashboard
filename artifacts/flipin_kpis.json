@@ -1,0 +1,9 @@
+{
+  "users_displaced_now": 2713,
+  "flip_in_rate_oot": 0.12925668253387038,
+  "flip_ins_oot": 353,
+  "users_oot": 2731,
+  "best_version": "v3",
+  "definition_users": "at least 10% of purchases at OXXO in the older 3 months and 3% or less in the newest 3",
+  "definition_event": "at least 2 OXXO purchases and at least 10% of purchases at OXXO in the next two months"
+}

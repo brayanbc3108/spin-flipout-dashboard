@@ -1,0 +1,44 @@
+[
+  {
+    "version": "v1",
+    "week": "Nov 17",
+    "label": "Same model as the Flip-Out one, trained on one snapshot (Jan 2026)",
+    "change": "Reuse the Flip-Out setup for Flip-In.",
+    "reason": "Starting point, so we can tell what each later change adds.",
+    "train_rows": 3157,
+    "train_event_rate": 0.14950902755780804,
+    "pr_auc": 0.17209523104158725,
+    "roc_auc": 0.5936190337775215,
+    "capture_10": 0.14447592067988668,
+    "lift_10": 1.4447592067988668,
+    "is_best": false
+  },
+  {
+    "version": "v2",
+    "week": "Nov 17",
+    "label": "Six snapshots, recent months weighted more, plus three new features",
+    "change": "Train on six snapshots (newer months weigh more) and add the OXXO share of the older and newer months and the months since the last OXXO purchase.",
+    "reason": "Flip-In only has about 3,000 displaced users per month, so more months help. The features describe how far the user drifted and for how long.",
+    "train_rows": 18236,
+    "train_event_rate": 0.14838780434305768,
+    "pr_auc": 0.17691955873293524,
+    "roc_auc": 0.6016911395059052,
+    "capture_10": 0.1501416430594901,
+    "lift_10": 1.501416430594901,
+    "is_best": false
+  },
+  {
+    "version": "v3",
+    "week": "Nov 17",
+    "label": "v2 with a smaller model on OXXO and activity features only",
+    "change": "Use a smaller tree model and only the 16 features about OXXO use and activity.",
+    "reason": "With so few users per month, a large model can learn noise. A smaller one with fewer features should hold up better.",
+    "train_rows": 18236,
+    "train_event_rate": 0.14838780434305768,
+    "pr_auc": 0.18026888318567835,
+    "roc_auc": 0.6145164479875725,
+    "capture_10": 0.1558073654390935,
+    "lift_10": 1.5580736543909348,
+    "is_best": true
+  }
+]
