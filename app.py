@@ -1,4 +1,5 @@
 """Spin Flip-Out dashboard, Team 4. Run from this folder with:  uv run streamlit run app.py"""
+import base64
 import json
 from pathlib import Path
 
@@ -26,10 +27,22 @@ st.markdown(f"""
         border-radius: 18px; padding: 26px 30px 22px; margin-bottom: 14px;}}
 .hero h1 {{color: white; font-size: 2.0rem; margin: 0 0 6px 0; padding: 0;}}
 .hero p {{color: #E9E3FF; font-size: 1.05rem; margin: 0;}}
-.chip {{display: inline-block; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28);
+.chip {{display: inline-block; background: {PURPLE_DARK}; border: 1px solid rgba(255,255,255,.85); font-weight: 600;
         color: white; border-radius: 999px; padding: 3px 12px; font-size: .82rem; margin: 12px 6px 0 0;}}
-.chip.hot {{background: {ORANGE}; border-color: {ORANGE};}}
-.kpi {{background: white; border: 1px solid {GRID}; border-radius: 14px; padding: 12px 16px; min-height: 104px;}}
+.chip.hot {{background: {ORANGE};}}
+.hero {{position: relative;}}
+.hero h1, .hero p {{padding-right: 110px;}}
+.hero .logo {{position: absolute; top: 16px; right: 24px; height: 64px;}}
+.kpi {{position: relative; background: white; border: 1px solid {GRID}; border-radius: 14px; padding: 12px 16px; min-height: 92px;
+        outline: none; transition: box-shadow .15s, border-color .15s;}}
+.kpi.has-tip {{cursor: help;}}
+.kpi.has-tip .lab::after {{content: ' ⓘ'; font-size: .75rem; color: {GREY};}}
+.kpi .tip {{position: absolute; left: 8px; right: 8px; top: calc(100% + 6px); z-index: 50; background: {INK}; color: white;
+        font-size: .8rem; line-height: 1.35; border-radius: 10px; padding: 9px 11px; opacity: 0; visibility: hidden;
+        transform: translateY(-4px); transition: .15s; pointer-events: none;}}
+.kpi.has-tip:hover, .kpi.has-tip:focus {{border-color: {PURPLE}; box-shadow: 0 4px 14px rgba(86,0,217,.15);}}
+.kpi.has-tip:hover .tip, .kpi.has-tip:focus .tip {{opacity: 1; visibility: visible; transform: none;}}
+[data-testid="stColumn"]:has(.kpi:hover), [data-testid="stColumn"]:has(.kpi:focus) {{z-index: 60;}}
 .kpi .lab {{color: {MUTED}; font-size: .85rem;}}
 .kpi .val {{color: {INK}; font-size: 1.45rem; font-weight: 700; line-height: 1.3;}}
 .note {{color: {MUTED}; font-size: .86rem; margin: 6px 0 12px;}}
@@ -57,6 +70,20 @@ st.markdown(f"""
 .stTabs [role="tab"] p {{font-weight: 600; font-size: 1rem;}}
 .stTabs [role="tab"][aria-selected="true"] {{background: {PURPLE};}}
 .stTabs [role="tab"][aria-selected="true"] p {{color: white;}}
+.badge {{display: inline-block; background: {ORANGE}; color: white; border-radius: 999px; padding: 2px 10px; font-size: .74rem;
+        font-weight: 600; margin-bottom: 6px;}}
+@media (max-width: 640px) {{
+  .hero {{padding: 16px 16px 14px; border-radius: 14px;}}
+  .hero h1 {{font-size: 1.35rem; line-height: 1.25; padding-right: 0; margin-top: 40px;}}
+  .hero p {{font-size: .88rem; padding-right: 0;}}
+  .hero .logo {{top: 10px; right: 12px; height: 44px;}}
+  .chip {{font-size: .72rem; padding: 2px 9px; margin: 8px 4px 0 0;}}
+  [data-baseweb="tab-list"], .stTabs [role="tablist"] {{flex-wrap: wrap; overflow: visible; gap: 4px;}}
+  .stTabs [role="tab"] {{padding: 6px 12px; border-radius: 10px;}}
+  .stTabs [role="tab"] p {{font-size: .9rem;}}
+  .htab {{overflow-x: auto;}}
+  .htab table {{min-width: 520px;}}
+}}
 </style>""", unsafe_allow_html=True)
 
 
@@ -80,17 +107,31 @@ def load():
                 payday=pd.read_parquet(ART / 'payday.parquet').set_index('persona'))
 
 
+def wrap_title(t, limit=45):
+    ## Break long chart titles at the space nearest the middle, so phones do not cut them off
+    out = []
+    for seg in t.split('<br>'):
+        if len(seg) > limit and ' ' in seg:
+            cut = min((i for i, ch in enumerate(seg) if ch == ' '), key=lambda i: abs(i - len(seg) / 2))
+            seg = seg[:cut] + '<br>' + seg[cut + 1:]
+        out.append(seg)
+    return '<br>'.join(out)
+
+
 def style(fig, height=380, legend=False):
     ## Same quiet look on every chart: white surface, light grid, conclusion title on the left
     fig.update_layout(template='plotly_white', height=height, font=dict(family='sans-serif', color=INK, size=13),
-                      title=dict(x=0, xanchor='left', font=dict(size=17, color=INK)), margin=dict(l=10, r=20, t=60, b=10),
+                      title=dict(x=0, xanchor='left', font=dict(size=15, color=INK)), margin=dict(l=10, r=20, t=60, b=10),
                       showlegend=legend, legend=dict(orientation='h', y=-0.18, x=0), hoverlabel=dict(bgcolor='white'),
                       plot_bgcolor='white', paper_bgcolor='white')
     fig.update_xaxes(gridcolor=GRID, zeroline=False, linecolor=GRID, tickfont=dict(color=MUTED))
     fig.update_yaxes(gridcolor=GRID, zeroline=False, linecolor=GRID, tickfont=dict(color=MUTED))
     t = fig.layout.title.text
     if t and not t.startswith('<b>'):
+        t = wrap_title(t)
         fig.update_layout(title_text='<b>' + t.replace('<br>', '</b><br><b>') + '</b>')
+        if '<br>' in t:
+            fig.update_layout(margin=dict(t=80))
     return fig
 
 
@@ -133,13 +174,18 @@ def hist3(groups, cols, cap, title):
     fig.update_annotations(font=dict(size=12, color=MUTED))
     fig.update_layout(barmode='overlay', title=title)
     style(fig, 380, legend=True)
-    fig.update_layout(margin=dict(l=10, r=10, t=105, b=10), legend=dict(y=-0.3))
+    lines = fig.layout.title.text.count('<br>') + 1
+    ## Title pinned to the top, subplot titles below it, so they never overlap however many lines the title wraps to
+    fig.update_layout(height=380 + 20 * lines, margin=dict(l=10, r=10, t=45 + 22 * lines, b=10), legend=dict(y=-0.3),
+                      title=dict(yref='container', y=1, yanchor='top', pad=dict(t=12)))
     return fig
 
 
-def kpi(col, label, value, sub='', accent=False):
-    col.markdown(f"<div class='kpi{' accent' if accent else ''}'><div class='lab'>{label}</div>"
-                 f"<div class='val'>{value}</div><div class='sub'>{sub}</div></div>", unsafe_allow_html=True)
+def kpi(col, label, value, sub='', accent=False, tip=''):
+    ## Short line always visible; the full explanation shows on hover, tap or keyboard focus
+    cls = 'kpi' + (' accent' if accent else '') + (' has-tip' if tip else '')
+    col.markdown(f"<div class='{cls}' tabindex='0'><div class='lab'>{label}</div><div class='val'>{value}</div>"
+                 f"<div class='sub'>{sub}</div>" + (f"<div class='tip'>{tip}</div>" if tip else '') + "</div>", unsafe_allow_html=True)
 
 
 d = load()
@@ -194,7 +240,9 @@ DRIVER.update({'oxxo_old_share': 'OXXO share, older 3 months', 'oxxo_new_share':
 z = z.rename(columns=TRAIT)
 
 ## Header
+LOGO = base64.b64encode((Path(__file__).resolve().parent / 'assets' / 'spin_logo_blanco.svg').read_bytes()).decode()
 st.markdown(f"""<div class='hero'>
+<img class='logo' src='data:image/svg+xml;base64,{LOGO}' alt='Spin by OXXO'>
 <h1>Who should Spin nudge outside OXXO next month?</h1>
 <p>This dashboard helps the <b>CRM lead at Spin</b> decide <b>which users to target next month with a non-OXXO purchase
 incentive, which message each persona gets, and how many of them to contact</b>.</p>
@@ -207,11 +255,11 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(['① Overview', '② Personas', '③ Tar
 ## 1. Overview
 with tab1:
     c = st.columns(5)
-    kpi(c[0], 'Users in the sample', f"{k['users_sample']:,}", 'Spin users in our 12 months of data')
-    kpi(c[1], 'Users we can score', f"{N_SCORED:,}", 'Active 3+ of the last 6 months, OXXO share of 10% or more')
-    kpi(c[2], 'Purchases made at OXXO', f"{k['oxxo_share_of_purchases']:.0%}", 'Share of all card purchases')
-    kpi(c[3], 'Flip-Out rate', f"{RATE:.0%}", 'Scorable users who moved their buying outside OXXO in 2 months', accent=True)
-    kpi(c[4], 'Personas', f"{len(PERSONA_ORDER)}", f"{k['users_in_scope']:,} users grouped by how they buy")
+    kpi(c[0], 'Users in the sample', f"{k['users_sample']:,}", '12 months of data', tip='Spin users in our 12 months of data.')
+    kpi(c[1], 'Users we can score', f"{N_SCORED:,}", 'Active OXXO users', tip='Active 3 or more of the last 6 months, with an OXXO share of 10% or more.')
+    kpi(c[2], 'Purchases made at OXXO', f"{k['oxxo_share_of_purchases']:.0%}", 'of card purchases', tip='Share of all card purchases made at OXXO.')
+    kpi(c[3], 'Flip-Out rate', f"{RATE:.0%}", 'in 2 months', accent=True, tip='Scorable users who moved their buying outside OXXO in 2 months.')
+    kpi(c[4], 'Personas', f"{len(PERSONA_ORDER)}", f"{k['users_in_scope']:,} users", tip=f"{k['users_in_scope']:,} users grouped by how they buy.")
 
     cap10 = gains.loc[gains['pct_contacted'] == 10].iloc[0]
     st.write('')
@@ -233,13 +281,13 @@ with tab1:
                       yaxis=dict(autorange='reversed'), xaxis=dict(range=[0, cnt.max() * 1.3]))
     a.plotly_chart(style(fig), width='stretch')
 
-    fr = pm['flip_out_rate']
+    fr = pm['flip_out_rate'].sort_values(ascending=False)
     hi, lo = fr.idxmax(), fr.idxmin()
     fig = go.Figure(go.Bar(x=fr.index, y=fr.values * 100, marker_color=[PCOLOR[p] for p in fr.index], marker_cornerradius=4,
                            text=[f'{v:.0%}' for v in fr.values], textposition='outside', cliponaxis=False,
                            hovertemplate='%{x}: %{y:.0f}% flip out<extra></extra>'))
     fig.add_hline(y=RATE * 100, line_dash='dot', line_color=MUTED)
-    fig.update_layout(title=f'{hi} flip out {fr[hi] / fr[lo]:.1f}x more often than {lo}', yaxis_title='% who flip out',
+    fig.update_layout(title=f'{hi} has the highest Flip-Out rate ({fr[hi]:.0%}), {fr[hi] / fr[lo]:.1f}x {lo}', yaxis_title='% who flip out',
                       xaxis_tickangle=-20, yaxis=dict(range=[0, fr.max() * 125]))
     b.plotly_chart(style(fig), width='stretch')
     st.caption(f'The dotted line is the rate for all scorable users ({RATE:.0%}). A flip-out is a user whose share of purchases outside OXXO rises at least 10 points above their own '
@@ -287,7 +335,8 @@ with tab2:
         tot = sum(m[0] for m in mix) or 1
         bar = ''.join(f"<div style='width:{m[0] / tot * 100:.1f}%;background:{m[1]}'></div>" for m in mix if m[0] > 0)
         lab = ' · '.join(f"{m[2]} {m[0] / tot:.0%}" for m in mix)
-        cols[i % 3].markdown(f"""<div class='pcard' style='border-top:5px solid {color}'>
+        badge = "<span class='badge'>Highest Flip-Out risk</span><br>" if p == pm['flip_out_rate'].idxmax() else ''
+        cols[i % 3].markdown(f"""<div class='pcard' style='border-top:5px solid {color}'>{badge}
 <h4>{p}</h4><div class='who'>{WHO[p]}</div>
 <div class='nums'><div><b>{int(r['users']):,}</b>users ({r['pct_users']:.0%})</div><div><b>{r['pct_spend']:.0%}</b>of all spend</div>
 <div><b>{pm.loc[p, 'flip_out_rate']:.0%}</b>flip out</div><div><b>{r['ticket']:,.0f}</b>MXN ticket</div></div>
@@ -365,17 +414,23 @@ with tab2:
 
 ## 3. Target list
 with tab3:
-    st.session_state.setdefault('tpers', list(PERSONA_ORDER))
     st.subheader('How big should the campaign be?')
     cap = st.slider('Share of scorable users the campaign can contact', 5, 30, 10, step=1, format='%d%%')
     row = gains.loc[gains['pct_contacted'] == cap].iloc[0]
     n_cap = round(N_SCORED * cap / 100)
+    by_risk = list(pm['flip_out_rate'].sort_values(ascending=False).index)
+    choice = st.selectbox('Persona (highest Flip-Out rate first)', ['All personas'] + by_risk,
+                          format_func=lambda p_: p_ if p_ == 'All personas' else f"{p_} ({pm.loc[p_, 'flip_out_rate']:.0%} flip out)")
+    one = None if choice == 'All personas' else choice
+    if one:
+        st.markdown(f"<div class='act'><b>Suggested message for {one}.</b> {ACTION[one]}</div>", unsafe_allow_html=True)
+    st.caption(f'The list is the top {cap}% of users by score. The persona choice narrows it to one group. Charts and the table below follow both.')
     got, rnd = row['capture'] * flips, row['random'] * flips
     c = st.columns(4)
-    kpi(c[0], 'Users to contact', f'{n_cap:,}', f'Top {cap}% of {N_SCORED:,} by Flip-Out score')
-    kpi(c[1], 'Flip-outs reached with the model', f'{got:,.0f}', f"{row['capture']:.0%} of the {flips:,.0f} expected", accent=True)
-    kpi(c[2], 'Flip-outs reached at random', f'{rnd:,.0f}', f"{row['random']:.0%} of them")
-    kpi(c[3], 'Gain over random', f"{row['capture'] / row['random']:.1f}x", f'{got - rnd:+,.0f} extra right people')
+    kpi(c[0], 'Users to contact', f'{n_cap:,}', f'Top {cap}%', tip=f'The top {cap}% of {N_SCORED:,} scorable users, ranked by Flip-Out score.')
+    kpi(c[1], 'Flip-outs reached with the model', f'{got:,.0f}', f"{row['capture']:.0%} of them", accent=True, tip=f"{row['capture']:.0%} of the {flips:,.0f} flip-outs we expect next month.")
+    kpi(c[2], 'Flip-outs reached at random', f'{rnd:,.0f}', f"{row['random']:.0%} of them", tip='What a random list of the same size would reach.')
+    kpi(c[3], 'Gain over random', f"{row['capture'] / row['random']:.1f}x", f'{got - rnd:+,.0f} people', tip=f'{got - rnd:+,.0f} extra right people for the same budget.')
     st.write('')
 
     a, b = st.columns([3, 2])
@@ -395,36 +450,22 @@ with tab3:
 
     on_list = target[target['rank'] <= n_cap]['persona'].value_counts().reindex(PERSONA_ORDER).fillna(0)
     lead = on_list.idxmax()
-    fig = go.Figure(go.Bar(x=on_list.values, y=on_list.index, orientation='h', marker_color=[PCOLOR[p] for p in on_list.index],
-                           marker_cornerradius=4, text=[f'{v:,.0f}' for v in on_list.values], textposition='outside',
+    fig = go.Figure(go.Bar(x=on_list.values, y=on_list.index, orientation='h', marker_cornerradius=4,
+                           marker=dict(color=[PCOLOR[p] for p in on_list.index], opacity=[1 if not one or p == one else .3 for p in on_list.index]),
+                           text=[f'{v:,.0f} · {pm.loc[p, "flip_out_rate"]:.0%} flip out' for p, v in on_list.items()], textposition='outside',
                            cliponaxis=False, hovertemplate='%{y}: %{x:,} users on the list<extra></extra>'))
-    fig.update_layout(title=f'The {lead} persona fills {on_list[lead] / on_list.sum():.0%} of the list', xaxis_title='Users on the list',
-                      yaxis=dict(autorange='reversed'), xaxis=dict(range=[0, on_list.max() * 1.25]))
+    fig.update_layout(title=f'{lead} is the largest group in this list ({on_list[lead] / on_list.sum():.0%})', xaxis_title='Users on the list (bar text: users · Flip-Out rate)',
+                      yaxis=dict(autorange='reversed'), xaxis=dict(range=[0, on_list.max() * 1.6]))
     b.plotly_chart(style(fig, 400), width='stretch')
 
     st.divider()
     st.subheader('The list')
-    f1, f2 = st.columns([3, 2])
-    sel = f1.multiselect('Persona', PERSONA_ORDER, key='tpers', on_change=sync_pill, args=('tpill', 'tpers'))
-    dec = f2.select_slider('Score decile (1 = most likely to flip out)', options=list(range(1, 11)), value=(1, 1))
-    in_dec = target[target['decile'].between(*dec)]
-    lst = in_dec[in_dec['persona'].isin(sel)].copy()
+    lst = target[target['rank'] <= n_cap]
+    if one:
+        lst = lst[lst['persona'] == one]
+    lst = lst.copy()
     lst['action'] = lst['persona'].map(lambda p: ACTION[p].split('.')[0])
-    lst['in_campaign'] = lst['rank'] <= n_cap
-    st.markdown(f"**{len(lst):,}** users match these filters, **{lst['in_campaign'].sum():,}** of them fall inside a {cap}% campaign.")
-
-    one = sel[0] if len(sel) == 1 else None
-    cnt_d = in_dec['persona'].value_counts().reindex(PERSONA_ORDER).fillna(0)
-    st.pills('Pick a persona to focus the list (pick it again to see all)', PERSONA_ORDER, key='tpill',
-             on_change=pick_persona, args=('tpill', 'tpers'))
-    a, b = st.columns([2, 3])
-    fig = go.Figure(go.Bar(x=cnt_d.values, y=cnt_d.index, orientation='h', marker_cornerradius=4,
-                           marker=dict(color=[PCOLOR[p] for p in PERSONA_ORDER], opacity=[1 if not one or p == one else .25 for p in PERSONA_ORDER]),
-                           text=[f'{v:,.0f}' if v else '' for v in cnt_d.values], textposition='outside', cliponaxis=False,
-                           hovertemplate='%{y}: %{x:,} users<extra></extra>'))
-    fig.update_layout(title=f'Showing {one}' if one else f'{cnt_d.idxmax()} has the most users in this list',
-                      xaxis_title='Users in the list', yaxis=dict(autorange='reversed'), xaxis=dict(range=[0, max(cnt_d.max(), 1) * 1.3]))
-    a.plotly_chart(style(fig, 380), width='stretch')
+    st.markdown(f"**{len(lst):,}** users: {one or 'all personas'}, top {cap}% by Flip-Out score.")
     hd = pd.DataFrame({'oxxo': lst['oxxo_share'] * 100, 'active': lst['active_months'], 'spend': lst['monthly_spend']})
     who = one or 'All personas'
     if len(hd):
@@ -433,23 +474,24 @@ with tab3:
     else:
         ttl = f'{who}: no users match these filters'
     s_cap = hd['spend'].quantile(.95) if len(hd) else 1
-    b.plotly_chart(hist3([('Users in the list', PCOLOR[one] if one else PURPLE, hd)],
-                         [('oxxo', 'OXXO share', '% of purchases'), ('active', 'Active months', 'Months (of 6)'),
-                          ('spend', 'Monthly spend', f'MXN (top 5% grouped at {s_cap:,.0f})')], s_cap, ttl), width='stretch')
+    st.plotly_chart(hist3([('Users in the list', PCOLOR[one] if one else PURPLE, hd)],
+                          [('oxxo', 'OXXO share', '% of purchases'), ('active', 'Active months', 'Months (of 6)'),
+                           ('spend', 'Monthly spend', f'MXN (top 5% grouped at {s_cap:,.0f})')], s_cap, ttl), width='stretch')
     st.caption('The histograms describe the users in the list right now.')
 
     show = lst.rename(columns={'rank': 'Rank', 'user_ref': 'User', 'persona': 'Persona', 'score': 'Flip-Out score',
-                               'decile': 'Decile', 'action': 'Message', 'in_campaign': f'In the {cap}% campaign',
+                               'decile': 'Decile', 'action': 'Message',
                                'oxxo_share': 'OXXO share', 'active_months': 'Active months (of 6)',
                                'monthly_spend': 'Monthly spend (MXN)', 'tx_last3': 'Purchases, last 3 months'})
     show['OXXO share'] = show['OXXO share'] * 100
-    order = ['Rank', 'User', 'Persona', 'Flip-Out score', 'Decile', f'In the {cap}% campaign', 'Message', 'OXXO share',
+    order = ['Rank', 'User', 'Persona', 'Flip-Out score', 'Decile', 'Message', 'OXXO share',
              'Active months (of 6)', 'Monthly spend (MXN)', 'Purchases, last 3 months']
     on_screen = [c_ for c_ in order if c_ not in ('OXXO share', 'Active months (of 6)', 'Monthly spend (MXN)')]
     st.dataframe(show[on_screen].head(1000), hide_index=True, width='stretch', height=420,
                  column_config={'Flip-Out score': st.column_config.ProgressColumn(min_value=0, max_value=1, format='%.2f')})
-    st.download_button('Download this list for the CRM tool', show[order].to_csv(index=False).encode(),
-                       'spin_flipout_target_list.csv', 'text/csv', type='primary')
+    slug = (one or 'all-personas').lower().replace(' ', '-')
+    st.download_button(f"Download {len(lst):,} users · {one or 'All personas'} · top {cap}%", show[order].to_csv(index=False).encode(),
+                       f'spin_target_list_{slug}_top{cap}.csv', 'text/csv', type='primary')
     st.caption('The download also includes OXXO share, active months and monthly spend for each user. '
                'The score ranks users from most to least likely to buy outside OXXO in the next two months. '
                'It ranks, it does not promise: even in the top decile not every user will flip out. User IDs are anonymous codes.')
@@ -458,10 +500,10 @@ with tab3:
 with tab4:
     st.subheader(f"Model {best['version']}: {best['label']}")
     c = st.columns(4)
-    kpi(c[0], 'Precision score (PR-AUC)', f"{best['pr_auc']:.3f}", f'A random list scores {RATE:.3f}', accent=True)
-    kpi(c[1], 'Flip-outs reached at 10%', f"{best['capture_10']:.1%}", 'A random list reaches 10.0%')
-    kpi(c[2], 'Gain at 10%', f"{best['lift_10']:.1f}x", 'Versus a random list')
-    kpi(c[3], 'Ranking score (ROC-AUC)', f"{best['roc_auc']:.3f}", '0.5 is a coin flip, 1.0 is perfect')
+    kpi(c[0], 'Precision score (PR-AUC)', f"{best['pr_auc']:.3f}", f'Random: {RATE:.3f}', accent=True, tip=f'How well the model ranks flip-outs first. A random list scores {RATE:.3f}; higher is better.')
+    kpi(c[1], 'Flip-outs reached at 10%', f"{best['capture_10']:.1%}", 'Random: 10%', tip='Share of all flip-outs reached when contacting the top 10%. A random list reaches 10%.')
+    kpi(c[2], 'Gain at 10%', f"{best['lift_10']:.1f}x", 'vs random', tip='How many times more flip-outs than a random list of the same size.')
+    kpi(c[3], 'Ranking score (ROC-AUC)', f"{best['roc_auc']:.3f}", '0.5 = coin flip', tip='How well the model ranks users overall. 0.5 is a coin flip, 1.0 is perfect.')
     st.write('')
 
     a, b = st.columns(2)
@@ -580,10 +622,10 @@ with tab5:
     st.session_state.setdefault('mpers', list(PERSONA_ORDER))
     st.subheader('Users move in two directions: out of OXXO and back in')
     c = st.columns(4)
-    kpi(c[0], 'Users who may leave (Flip-Out)', f'{len(out_df):,}', 'Still buy at OXXO. Same model as the Target list')
-    kpi(c[1], 'Users who may come back (Flip-In)', f'{F_N:,}', 'Had at least 10% of purchases at OXXO, now 3% or less', accent=True)
-    kpi(c[2], 'Flip-In rate', f'{F_RATE:.0%}', 'Of these users, share that came back to OXXO in 2 months')
-    kpi(c[3], 'Flip-Ins reached at 10%', f"{fbest['capture_10']:.0%}", 'A random list reaches 10%')
+    kpi(c[0], 'Users who may leave (Flip-Out)', f'{len(out_df):,}', 'Still at OXXO', tip='Still buy at OXXO. Same model as the Target list.')
+    kpi(c[1], 'Users who may come back (Flip-In)', f'{F_N:,}', 'Left OXXO', accent=True, tip='Had at least 10% of purchases at OXXO, now 3% or less.')
+    kpi(c[2], 'Flip-In rate', f'{F_RATE:.0%}', 'in 2 months', tip='Of these users, the share that came back to OXXO in 2 months.')
+    kpi(c[3], 'Flip-Ins reached at 10%', f"{fbest['capture_10']:.0%}", 'Random: 10%', tip='Share of all Flip-Ins reached when contacting the top 10%. A random list reaches 10%.')
     st.write('')
 
     out_n = out_df['persona'].value_counts().reindex(PERSONA_ORDER).fillna(0)
@@ -605,10 +647,10 @@ with tab5:
     fn_cap = round(F_N * fcap / 100)
     fgot, frnd = frow['capture'] * f_flips, frow['random'] * f_flips
     c = st.columns(4)
-    kpi(c[0], 'Users to contact', f'{fn_cap:,}', f'Top {fcap}% of {F_N:,} by Flip-In score')
-    kpi(c[1], 'Flip-Ins reached with the model', f'{fgot:,.0f}', f"{frow['capture']:.0%} of the {f_flips:,.0f} expected", accent=True)
-    kpi(c[2], 'Flip-Ins reached at random', f'{frnd:,.0f}', f"{frow['random']:.0%} of them")
-    kpi(c[3], 'Gain over random', f"{frow['capture'] / frow['random']:.1f}x", f'{fgot - frnd:+,.0f} extra right people')
+    kpi(c[0], 'Users to contact', f'{fn_cap:,}', f'Top {fcap}%', tip=f'The top {fcap}% of {F_N:,} candidates, ranked by Flip-In score.')
+    kpi(c[1], 'Flip-Ins reached with the model', f'{fgot:,.0f}', f"{frow['capture']:.0%} of them", accent=True, tip=f"{frow['capture']:.0%} of the {f_flips:,.0f} Flip-Ins we expect.")
+    kpi(c[2], 'Flip-Ins reached at random', f'{frnd:,.0f}', f"{frow['random']:.0%} of them", tip='What a random list of the same size would reach.')
+    kpi(c[3], 'Gain over random', f"{frow['capture'] / frow['random']:.1f}x", f'{fgot - frnd:+,.0f} people', tip=f'{fgot - frnd:+,.0f} extra right people for the same budget.')
     st.write('')
     a, b = st.columns([3, 2])
     fig = go.Figure()
