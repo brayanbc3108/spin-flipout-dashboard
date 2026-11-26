@@ -4,7 +4,7 @@ Brayan Beristain Cortez, Roberto Reyes Ruiz, Ana Karen Chavez and Abril Rodrigue
 
 **This dashboard helps the CRM lead at Spin decide which users to target next month with a non-OXXO purchase incentive, which message each persona gets, and how many of them to contact.**
 
-Live app: _link added after deployment_
+Live app: https://spin-flipout-team4.streamlit.app
 
 ## Run it locally
 
